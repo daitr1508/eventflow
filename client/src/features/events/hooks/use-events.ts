@@ -14,17 +14,24 @@ import {
 } from '../api/events';
 
 export function useEvents() {
-  return useQuery(['events'], getEvents);
+  return useQuery({
+    queryKey: ['events'],
+    queryFn: getEvents,
+  });
 }
 
 export function useEvent(id: string) {
-  return useQuery(['events', id], () => getEvent(id), {
+  return useQuery({
+    queryKey: ['events', id],
+    queryFn: () => getEvent(id),
     enabled: Boolean(id),
   });
 }
 
 export function useMyEvents() {
-  return useQuery(['events', 'my-events'], getMyEvents, {
+  return useQuery({
+    queryKey: ['events', 'my-events'],
+    queryFn: getMyEvents,
     enabled: typeof window !== 'undefined',
   });
 }

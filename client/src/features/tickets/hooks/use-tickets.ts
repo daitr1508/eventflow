@@ -6,13 +6,17 @@ import { toast } from 'sonner';
 import { getMyTickets, getTicket, purchaseTicket, type PurchaseTicketInput } from '../api/tickets';
 
 export function useMyTickets() {
-  return useQuery(['tickets', 'my-tickets'], getMyTickets, {
+  return useQuery({
+    queryKey: ['tickets', 'my-tickets'],
+    queryFn: getMyTickets,
     enabled: typeof window !== 'undefined',
   });
 }
 
 export function useTicket(id: string) {
-  return useQuery(['tickets', id], () => getTicket(id), {
+  return useQuery({
+    queryKey: ['tickets', id],
+    queryFn: () => getTicket(id),
     enabled: Boolean(id),
   });
 }
