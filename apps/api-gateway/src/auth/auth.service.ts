@@ -30,6 +30,14 @@ export class AuthService {
     }
   }
 
+  async verifyEmail(verificationToken: string, userId: string) {
+    try {
+      // TODO - this endpoint should return something, maybe the user profile or a success message
+    } catch (error) {
+      this.handleError(error);
+    }
+  }
+
   async login(data: {
     email: string;
     password: string;

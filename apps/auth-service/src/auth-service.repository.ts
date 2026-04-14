@@ -1,7 +1,7 @@
 // src/users/users.repository.ts
 import { Injectable } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
-import { DatabaseService, userProfiles, users } from '@app/database';
+import { DatabaseService, emailVerificationTokens, userProfiles, users } from '@app/database';
 
 @Injectable()
 export class UsersRepository {
@@ -44,5 +44,12 @@ export class UsersRepository {
       .limit(1);
     
     return user;
+  }
+
+  async createVerificationToken(userId: string, token: string, expiresAt: Date) {
+    return await this.dbService.db
+      .insert(emailVerificationTokens)
+      .values({ userId, token, expiresAt })
+      .returning();
   }
 }

@@ -5,25 +5,23 @@ import { EmailService } from './email.service';
 export class NotificationsServiceService {
   private readonly logger = new Logger(NotificationsServiceService.name);
 
-  constructor(private readonly emailService: EmailService) {}
+  constructor(private readonly emailService: EmailService) { }
 
   async sendWelcomeEmail(data: {
     userId: string;
     email: string;
     name: string;
+    verificationToken: string;
+    expiresAt: string;
   }) {
     this.logger.log(`Sending welcome email to ${data.email}`);
 
     const html = `
-      <h1>Welcome to EventFlow, ${data.name}! 🎉</h1>
-      <p>Your account has been created successfully.</p>
-      <p>You can now:</p>
-      <ul>
-        <li>Browse and discover events</li>
-        <li>Purchase tickets</li>
-        <li>Create your own events</li>
-      </ul>
-      <p>Happy eventing!</p>
+      <h1>Xin chào, ${data.name}! 🎉</h1>
+      <p>Bạn cần xác minh email để hoàn tất quá trình đăng ký.</p>
+      <p>Vui lòng click vào link sau:</p>
+      <p>Link sẽ hết hạn vào ${new Date(data.expiresAt).toLocaleString()}</p>
+      <a href="https://eventflow.com/verify-email?token=${data.verificationToken}" style="display: inline-block; padding: 10px 20px; background-color: #4CAF50; color: white; text-decoration: none; border-radius: 5px;">Xác minh email</a>
     `;
 
     await this.emailService.sendEmail(

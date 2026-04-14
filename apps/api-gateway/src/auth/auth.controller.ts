@@ -13,6 +13,15 @@ export class AuthController {
     return this.authService.register(registerDto);
   }
 
+  @Post('verify-email')
+  @Throttle({ default: { limit: 3000, ttl: 60000 } })
+  verifyEmail(
+    @Headers('x-token-verify-email') verificationToken: string,
+    @Headers('x-user-id') userId: string,
+  ) {
+    return this.authService.verifyEmail(verificationToken, userId);
+  }
+
   @Get('me')
   @SkipThrottle()
   getMe(@Headers('authorization') authorization: string) {

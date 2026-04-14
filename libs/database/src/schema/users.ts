@@ -23,7 +23,7 @@ export const users = pgTable('users', {
   passwordHash: varchar('password_hash', { length: 255 }).notNull(),
   name: varchar('name', { length: 255 }).notNull(),
   role: roleEnum('role').default('USER').notNull(),
-  status: statusEnum('status').default('active').notNull(),
+  status: statusEnum('status').default('pending').notNull(),
   isEmailVerified: boolean('is_email_verified').default(false).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
@@ -95,6 +95,13 @@ export const authAuditLogs = pgTable('auth_audit_logs', {
   userAgent: text('user_agent'),
   metadata: jsonb('metadata'), // Lưu thêm thông tin như địa điểm, lý do fail
   createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const emailVerificationTokens = pgTable('email_verification_tokens', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  token: varchar('token', { length: 255 }).notNull(),
+  expiresAt: timestamp('expires_at').notNull(),
 });
 
 export type User = typeof users.$inferSelect;

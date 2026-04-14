@@ -48,15 +48,25 @@ export class AuthServiceService implements OnModuleInit {
     // Create profile
     await this.usersRepo.createProfile(user.id);
 
+    // Create email verification token
+    const verificationToken = Math.random().toString(36).substring(2, 15);
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    await this.usersRepo.createVerificationToken(user.id, verificationToken, expiresAt);
+
     // send user registered event
     this.kafkClient.emit(KAFKA_TOPICS.USER_REGISTERED, {
       userId: user.id,
       email: user.email,
       name: user.name,
       timestamp: new Date().toISOString(),
+      verificationToken,
+      expiresAt: expiresAt.toISOString(),
     });
 
     return { message: 'User registered successfully', userId: user.id };
+  }
+
+  async verifyEmail(verificationToken: string, userId: string) {
   }
 
   async getMe(userId: string) {
