@@ -1,6 +1,7 @@
 import { DatabaseService, users } from '@app/database';
 import { KAFKA_SERVICE, KAFKA_TOPICS } from '@app/kafka';
 import {
+  BadRequestException,
   ConflictException,
   Inject,
   Injectable,
@@ -30,7 +31,7 @@ export class AuthServiceService implements OnModuleInit {
     // check if user exists
     const exitingUser = await this.usersRepo.exitingUser(email);
 
-    if (exitingUser.length > 0) {
+    if (exitingUser) {
       throw new ConflictException('User already exists');
     }
 
@@ -39,6 +40,13 @@ export class AuthServiceService implements OnModuleInit {
 
     // create user
     const user = await this.usersRepo.createUser(email, hashedPassword, name)
+
+    if(!user) {
+      throw new BadRequestException('Something went wrong');
+    }
+
+    // Create profile
+    await this.usersRepo.createProfile(user.id);
 
     // send user registered event
     this.kafkClient.emit(KAFKA_TOPICS.USER_REGISTERED, {
@@ -51,34 +59,40 @@ export class AuthServiceService implements OnModuleInit {
     return { message: 'User registered successfully', userId: user.id };
   }
 
-  // async login(email: string, password: string) {
-  //   const [user] = await this.dbService.db
-  //     .select()
-  //     .from(users)
-  //     .where(eq(users.email, email))
-  //     .limit(1);
+  async getMe(userId: string) {
+    const user = await this.usersRepo.getMe(userId);
+   
+      if (!user) {    
+        throw new BadRequestException('User not found');
+      }
+      return user;
+  }
 
-  //   if (!user || !(await bcrypt.compare(password, user.password))) {
-  //     throw new UnauthorizedException('Invalid credentials');
-  //   }
 
-  //   const token = this.jwtService.sign({ sub: user.id, email: user.email });
+  async login(email: string, password: string) {
+    const exitingUser = await this.usersRepo.exitingUser(email);
 
-  //   this.kafkClient.emit(KAFKA_TOPICS.USER_LOGIN, {
-  //     userId: user.id,
-  //     timestamp: new Date().toISOString(),
-  //   });
+    if (!exitingUser || !(await bcrypt.compare(password, exitingUser.passwordHash))) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
 
-  //   return {
-  //     access_token: token,
-  //     user: {
-  //       id: user.id,
-  //       email: user.email,
-  //       name: user.name,
-  //       role: user.role,
-  //     },
-  //   };
-  // }
+    const token = this.jwtService.sign({ sub: exitingUser.id, email: exitingUser.email });
+
+    this.kafkClient.emit(KAFKA_TOPICS.USER_LOGIN, {
+      userId: exitingUser.id,
+      timestamp: new Date().toISOString(),
+    });
+
+    return {
+      access_token: token,
+      user: {
+        id: exitingUser.id,
+        email: exitingUser.email,
+        name: exitingUser.name,
+        role: exitingUser.role,
+      },
+    };
+  }
 
   // async getProfile(userId: string) {
   //   const [user] = await this.dbService.db

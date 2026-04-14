@@ -8,20 +8,26 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('register')
-  @Throttle({ default: { limit: 3, ttl: 60000 } })
+  @Throttle({ default: { limit: 3000, ttl: 60000 } })
   register(@Body() registerDto: RegisterDto) {
     return this.authService.register(registerDto);
   }
 
+  @Get('me')
+  @SkipThrottle()
+  getMe(@Headers('authorization') authorization: string) {
+    return this.authService.getMe(authorization);
+  }
+
   @Post('login')
-  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @Throttle({ default: { limit: 500, ttl: 60000 } })
   login(@Body() loginDto: LoginDto) {
     return this.authService.login(loginDto);
   }
 
-  @Get('profile')
-  @SkipThrottle()
-  getProfile(@Headers('authorization') authorization: string) {
-    return this.authService.getProfile(authorization);
-  }
+  // @Get('profile')
+  // @SkipThrottle()
+  // getProfile(@Headers('authorization') authorization: string) {
+  //   return this.authService.getProfile(authorization);
+  // }
 }

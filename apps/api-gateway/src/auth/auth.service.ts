@@ -48,11 +48,11 @@ export class AuthService {
     }
   }
 
-  async getProfile(token: string): Promise<UserProfileResponse> {
+  async getMe(token: string): Promise<UserProfileResponse> {
     try {
       const response = await firstValueFrom(
         this.httpService.get<UserProfileResponse>(
-          `${this.authServiceUrl}/profile`,
+          `${this.authServiceUrl}/me`,
           {
             headers: { Authorization: token },
           },
