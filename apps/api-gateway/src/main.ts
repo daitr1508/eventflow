@@ -8,7 +8,7 @@ async function bootstrap() {
 
   app.enableCors({
     // Sửa lại thành port của Client (nơi phát ra lỗi)
-    origin: 'http://localhost:4000',
+    origin: process.env.ORIGIN_URL || 'http://localhost:3000',
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true,
   });
