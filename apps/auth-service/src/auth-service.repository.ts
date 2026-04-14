@@ -1,21 +1,21 @@
 // src/users/users.repository.ts
 import { Injectable } from '@nestjs/common';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { DatabaseService, emailVerificationTokens, userProfiles, users } from '@app/database';
 
 @Injectable()
 export class UsersRepository {
   constructor(
     private readonly dbService: DatabaseService,
-  ) {}
+  ) { }
 
   async exitingUser(email: string) {
     const [user] = await this.dbService.db
-          .select()
-          .from(users)
-          .where(eq(users.email, email))
-          .limit(1);
-    
+      .select()
+      .from(users)
+      .where(eq(users.email, email))
+      .limit(1);
+
     return user;
   }
 
@@ -24,8 +24,8 @@ export class UsersRepository {
       .insert(users)
       .values({ email, passwordHash: hashedPassword, name })
       .returning();
-    
-      return user
+
+    return user
   }
 
   async createProfile(userId: string) {
@@ -42,7 +42,7 @@ export class UsersRepository {
       .leftJoin(userProfiles, eq(users.id, userProfiles.userId))
       .where(eq(users.id, userId))
       .limit(1);
-    
+
     return user;
   }
 
@@ -51,5 +51,28 @@ export class UsersRepository {
       .insert(emailVerificationTokens)
       .values({ userId, token, expiresAt })
       .returning();
+  }
+
+  async getVerificationToken(userId: string, token: string) {
+    const [verificationToken] = await this.dbService.db
+      .select()
+      .from(emailVerificationTokens)
+      .where(and(eq(emailVerificationTokens.userId, userId), eq(emailVerificationTokens.token, token)))
+      .limit(1);
+
+    return verificationToken;
+  }
+
+  async deleteVerificationToken(userId: string, token: string) {
+    await this.dbService.db
+      .delete(emailVerificationTokens)
+      .where(and(eq(emailVerificationTokens.userId, userId), eq(emailVerificationTokens.token, token)));
+  }
+
+  async verifyEmail(userId: string) {
+    await this.dbService.db
+      .update(users)
+      .set({ isEmailVerified: true })
+      .where(eq(users.id, userId));
   }
 }

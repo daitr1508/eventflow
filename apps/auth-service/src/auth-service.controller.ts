@@ -15,20 +15,24 @@ import { AuthGuard } from '@nestjs/passport';
 export class AuthServiceController {
   constructor(private readonly authServiceService: AuthServiceService) { }
 
+  // Register a new user
   @Post('register')
   register(@Body() dto: RegisterDto) {
     return this.authServiceService.register(dto.email, dto.password, dto.name);
   }
 
+  // Verify email address using token and user ID from headers
   @UseGuards(AuthGuard('jwt'))
   @Post('verify-email')
   verifyEmail(
     @Headers('x-token-verify-email') verificationToken: string,
-    @Headers('x-user-id') userId: string,
+    @Request() req: { user: { userId: string } },
   ) {
-    return this.authServiceService.verifyEmail(verificationToken, userId);
+    console.log('verificationToken', verificationToken);
+    return this.authServiceService.verifyEmail(verificationToken, req.user.userId);
   }
 
+  // Get current user info (protected route)
   @UseGuards(AuthGuard('jwt'))
   @Get('me')
   me(@Request() req: { user: { userId: string } }) {

@@ -63,19 +63,53 @@ export class AuthServiceService implements OnModuleInit {
       expiresAt: expiresAt.toISOString(),
     });
 
-    return { message: 'User registered successfully', userId: user.id };
+    return { message: 'User registered successfully', userId: user.id, verificationToken };
   }
 
   async verifyEmail(verificationToken: string, userId: string) {
+    const user = await this.usersRepo.getMe(userId);
+    console.log('User for email verification:', user);
+    console.log("userId:", userId);
+    if (!user) {
+      throw new BadRequestException('User not found');
+    }
+
+    if (user.users?.isEmailVerified) {
+      throw new BadRequestException('Email already verified');
+    }
+
+    const tokenRecord = await this.usersRepo.getVerificationToken(userId, verificationToken);
+
+    if (!tokenRecord) {
+      throw new BadRequestException('Invalid or expired verification token');
+    }
+
+    if (tokenRecord.expiresAt < new Date()) {
+      throw new BadRequestException('Verification token has expired');
+    }
+
+    // Mark email as verified (this should ideally be done in a transaction)
+    await this.usersRepo.verifyEmail(userId);
+
+    // Delete the used verification token
+    await this.usersRepo.deleteVerificationToken(userId, verificationToken);
+
+    return await this.usersRepo.getMe(userId);  
   }
 
   async getMe(userId: string) {
     const user = await this.usersRepo.getMe(userId);
+
+    // Get token verify email
+    const tokenRecord = await this.usersRepo.getVerificationToken(userId, '');
    
       if (!user) {    
         throw new BadRequestException('User not found');
       }
-      return user;
+      return {
+        ...user,
+        tokenRecord
+      };
   }
 
 

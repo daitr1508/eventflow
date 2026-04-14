@@ -30,9 +30,24 @@ export class AuthService {
     }
   }
 
-  async verifyEmail(verificationToken: string, userId: string) {
+  async verifyEmail(token: string, verificationToken: string) {
     try {
-      // TODO - this endpoint should return something, maybe the user profile or a success message
+        const response = await firstValueFrom(
+        this.httpService.post(
+          `${this.authServiceUrl}/verify-email`,
+          {},
+        {
+          headers: { 
+            // Nếu có AuthGuard('jwt'), bạn cần thêm cả JWT của user ở đây nữa
+            'Authorization': token,
+            'x-token-verify-email': verificationToken,
+          },
+        },
+        ),
+      );
+      console.log('Email verification response:', response.data);
+
+      return response.data;
     } catch (error) {
       this.handleError(error);
     }

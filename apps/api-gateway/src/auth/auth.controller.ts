@@ -5,7 +5,7 @@ import { SkipThrottle, Throttle } from '@nestjs/throttler';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(private readonly authService: AuthService) { }
 
   @Post('register')
   @Throttle({ default: { limit: 3000, ttl: 60000 } })
@@ -16,10 +16,10 @@ export class AuthController {
   @Post('verify-email')
   @Throttle({ default: { limit: 3000, ttl: 60000 } })
   verifyEmail(
+    @Headers('authorization') authorization: string,
     @Headers('x-token-verify-email') verificationToken: string,
-    @Headers('x-user-id') userId: string,
   ) {
-    return this.authService.verifyEmail(verificationToken, userId);
+    return this.authService.verifyEmail(authorization, verificationToken);
   }
 
   @Get('me')
