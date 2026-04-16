@@ -28,7 +28,6 @@ export class AuthServiceController {
     @Headers('x-token-verify-email') verificationToken: string,
     @Request() req: { user: { userId: string } },
   ) {
-    console.log('verificationToken', verificationToken);
     return this.authServiceService.verifyEmail(
       verificationToken,
       req.user.userId,
@@ -46,10 +45,4 @@ export class AuthServiceController {
   login(@Body() dto: LoginDto) {
     return this.authServiceService.login(dto.email, dto.password);
   }
-
-  // @UseGuards(AuthGuard('jwt'))
-  // @Get('profile')
-  // getProfile(@Request() req: { user: { userId: string } }) {
-  //   return this.authServiceService.getProfile(req.user.userId);
-  // }
 }

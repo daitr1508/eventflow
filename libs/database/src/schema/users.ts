@@ -1,19 +1,29 @@
-import { 
-  pgTable, 
-  uuid, 
-  varchar, 
-  timestamp, 
-  boolean, 
-  text, 
-  primaryKey, 
-  pgEnum, 
+import {
+  pgTable,
+  uuid,
+  varchar,
+  timestamp,
+  boolean,
+  text,
+  primaryKey,
+  pgEnum,
   jsonb,
-  inet
+  inet,
 } from 'drizzle-orm/pg-core';
 
 //Enum for users table
-export const roleEnum = pgEnum('role', ['USER', 'EDITOR', 'ADMIN', 'SUPER_ADMIN']);
-export const statusEnum = pgEnum('status', ['active', 'inactive', 'suspended', 'pending']);
+export const roleEnum = pgEnum('role', [
+  'USER',
+  'EDITOR',
+  'ADMIN',
+  'SUPER_ADMIN',
+]);
+export const statusEnum = pgEnum('status', [
+  'active',
+  'inactive',
+  'suspended',
+  'pending',
+]);
 export const mfaTypeEnum = pgEnum('mfa_type', ['totp', 'sms', 'email']);
 
 // --- 1. USERS TABLE ---
@@ -31,7 +41,9 @@ export const users = pgTable('users', {
 
 // --- 2. USER PROFILES (Thông tin bổ sung) ---
 export const userProfiles = pgTable('user_profiles', {
-  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).primaryKey(),
+  userId: uuid('user_id')
+    .references(() => users.id, { onDelete: 'cascade' })
+    .primaryKey(),
   phoneNumber: varchar('phone_number', { length: 20 }),
   avatarUrl: text('avatar_url'),
   bio: text('bio'),
@@ -41,7 +53,9 @@ export const userProfiles = pgTable('user_profiles', {
 // --- 3. REFRESH TOKENS (Quản lý Session/Thiết bị) ---
 export const refreshTokens = pgTable('refresh_tokens', {
   id: uuid('id').defaultRandom().primaryKey(),
-  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  userId: uuid('user_id')
+    .references(() => users.id, { onDelete: 'cascade' })
+    .notNull(),
   token: text('token').notNull().unique(),
   deviceId: varchar('device_id', { length: 255 }), // Để quản lý thiết bị cụ thể
   ipAddress: inet('ip_address'),
@@ -53,7 +67,9 @@ export const refreshTokens = pgTable('refresh_tokens', {
 
 // --- 4. MULTI-FACTOR AUTH (MFA) ---
 export const mfaSettings = pgTable('mfa_settings', {
-  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).primaryKey(),
+  userId: uuid('user_id')
+    .references(() => users.id, { onDelete: 'cascade' })
+    .primaryKey(),
   mfaType: mfaTypeEnum('mfa_type').default('totp').notNull(),
   secretKey: text('secret_key').notNull(), // Khóa bí mật đã mã hóa
   backupCodes: jsonb('backup_codes').notNull().default([]), // Mảng các mã dự phòng
@@ -64,7 +80,9 @@ export const mfaSettings = pgTable('mfa_settings', {
 // --- 5. SOCIAL ACCOUNTS (OAuth2) ---
 export const socialAccounts = pgTable('social_accounts', {
   id: uuid('id').defaultRandom().primaryKey(),
-  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  userId: uuid('user_id')
+    .references(() => users.id, { onDelete: 'cascade' })
+    .notNull(),
   provider: varchar('provider', { length: 50 }).notNull(), // 'google', 'facebook', 'github'
   providerUserId: varchar('provider_user_id', { length: 255 }).notNull(), // ID từ phía Google/FB
   createdAt: timestamp('created_at').defaultNow().notNull(),
@@ -79,12 +97,18 @@ export const permissions = pgTable('permissions', {
 });
 
 // Bảng trung gian Role - Permission (Một Role có nhiều quyền)
-export const rolePermissions = pgTable('role_permissions', {
-  role: roleEnum('role').notNull(),
-  permissionId: uuid('permission_id').references(() => permissions.id, { onDelete: 'cascade' }).notNull(),
-}, (t) => ({
-  pk: primaryKey({ columns: [t.role, t.permissionId] }),
-}));
+export const rolePermissions = pgTable(
+  'role_permissions',
+  {
+    role: roleEnum('role').notNull(),
+    permissionId: uuid('permission_id')
+      .references(() => permissions.id, { onDelete: 'cascade' })
+      .notNull(),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.role, t.permissionId] }),
+  }),
+);
 
 // --- 7. AUDIT LOGS (Nhật ký hoạt động bảo mật) ---
 export const authAuditLogs = pgTable('auth_audit_logs', {
@@ -99,7 +123,9 @@ export const authAuditLogs = pgTable('auth_audit_logs', {
 
 export const emailVerificationTokens = pgTable('email_verification_tokens', {
   id: uuid('id').defaultRandom().primaryKey(),
-  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  userId: uuid('user_id')
+    .references(() => users.id, { onDelete: 'cascade' })
+    .notNull(),
   token: varchar('token', { length: 255 }).notNull(),
   expiresAt: timestamp('expires_at').notNull(),
 });

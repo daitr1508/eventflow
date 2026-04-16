@@ -101,7 +101,10 @@ export class AuthServiceService implements OnModuleInit {
     // Delete the used verification token
     await this.usersRepo.deleteVerificationToken(userId, verificationToken);
 
-    return await this.usersRepo.getMe(userId);
+    return {
+      message: 'Email verified successfully',
+      status: 'success',
+    };
   }
 
   async getMe(userId: string) {

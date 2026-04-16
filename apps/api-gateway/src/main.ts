@@ -1,16 +1,21 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { SERVICES_PORTS } from '@app/common';
 import { ValidationPipe } from '@nestjs/common';
+import {
+  AllExceptionsFilter,
+  HttpExceptionFilter,
+  SERVICES_PORTS,
+  TransformInterceptor,
+} from '@app/common';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   app.enableCors({
-    // Sửa lại thành port của Client (nơi phát ra lỗi)
-    origin: process.env.ORIGIN_URL || 'http://localhost:3000',
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    origin: ['http://localhost:4000'].filter(Boolean),
     credentials: true,
+    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
   });
 
   //Enable validation
@@ -22,9 +27,15 @@ async function bootstrap() {
     }),
   );
 
-  await app.listen(process.env.PORT ?? SERVICES_PORTS.API_GATEWAY);
+  // Global interceptors, filters, and other middlewares can be set up here
+  app.useGlobalInterceptors(new TransformInterceptor());
+
+  //Note: Filters are applied in a reversed order
+  app.useGlobalFilters(new AllExceptionsFilter(), new HttpExceptionFilter());
+
+  await app.listen(process.env.PORT || SERVICES_PORTS.API_GATEWAY);
   console.log(
-    `API Gateway is running on port ${process.env.PORT ?? SERVICES_PORTS.API_GATEWAY}`,
+    `API Gateway is running on port ${process.env.PORT || SERVICES_PORTS.API_GATEWAY}`,
   );
 }
 bootstrap();
