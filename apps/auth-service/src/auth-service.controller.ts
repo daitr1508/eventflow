@@ -13,7 +13,7 @@ import { AuthGuard } from '@nestjs/passport';
 
 @Controller()
 export class AuthServiceController {
-  constructor(private readonly authServiceService: AuthServiceService) { }
+  constructor(private readonly authServiceService: AuthServiceService) {}
 
   // Register a new user
   @Post('register')
@@ -29,7 +29,10 @@ export class AuthServiceController {
     @Request() req: { user: { userId: string } },
   ) {
     console.log('verificationToken', verificationToken);
-    return this.authServiceService.verifyEmail(verificationToken, req.user.userId);
+    return this.authServiceService.verifyEmail(
+      verificationToken,
+      req.user.userId,
+    );
   }
 
   // Get current user info (protected route)

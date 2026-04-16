@@ -18,7 +18,14 @@ export class NotificationsServiceController {
 
   @EventPattern(KAFKA_TOPICS.USER_REGISTERED)
   async handleUserRegistered(
-    @Payload() data: { userId: string; email: string; name: string, verificationToken: string; expiresAt: string },
+    @Payload()
+    data: {
+      userId: string;
+      email: string;
+      name: string;
+      verificationToken: string;
+      expiresAt: string;
+    },
   ) {
     this.logger.log(`Received user registered event: ${JSON.stringify(data)}`);
     await this.notificationsServiceService.sendWelcomeEmail(data);

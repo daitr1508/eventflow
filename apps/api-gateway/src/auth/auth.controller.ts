@@ -5,7 +5,7 @@ import { SkipThrottle, Throttle } from '@nestjs/throttler';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) { }
+  constructor(private readonly authService: AuthService) {}
 
   @Post('register')
   @Throttle({ default: { limit: 3000, ttl: 60000 } })

@@ -13,6 +13,7 @@ export class DatabaseService implements OnModuleDestroy {
       process.env.DATABASE_URL ||
       'postgresql://eventflowapp:eventflow_password@localhost:5432/eventflowapp?schema=public';
 
+    // eslint-disable-next-line no-console
     this.pool = new Pool({ connectionString });
     this.db = drizzle(this.pool, { schema });
 

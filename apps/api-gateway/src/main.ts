@@ -13,7 +13,7 @@ async function bootstrap() {
     credentials: true,
   });
 
-    //Enable validation
+  //Enable validation
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -23,6 +23,8 @@ async function bootstrap() {
   );
 
   await app.listen(process.env.PORT ?? SERVICES_PORTS.API_GATEWAY);
-  console.log(`API Gateway is running on port ${process.env.PORT ?? SERVICES_PORTS.API_GATEWAY}`);
+  console.log(
+    `API Gateway is running on port ${process.env.PORT ?? SERVICES_PORTS.API_GATEWAY}`,
+  );
 }
 bootstrap();

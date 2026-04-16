@@ -5,7 +5,7 @@ import { EmailService } from './email.service';
 export class NotificationsServiceService {
   private readonly logger = new Logger(NotificationsServiceService.name);
 
-  constructor(private readonly emailService: EmailService) { }
+  constructor(private readonly emailService: EmailService) {}
 
   async sendWelcomeEmail(data: {
     userId: string;

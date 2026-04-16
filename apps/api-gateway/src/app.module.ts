@@ -27,7 +27,7 @@ import { APP_GUARD } from '@nestjs/core';
     }),
     AuthModule,
     EventsModule,
-    TicketsModule
+    TicketsModule,
   ],
   controllers: [AppController],
   providers: [

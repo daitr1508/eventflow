@@ -1,4 +1,3 @@
-import { DatabaseService, users } from '@app/database';
 import { KAFKA_SERVICE, KAFKA_TOPICS } from '@app/kafka';
 import {
   BadRequestException,
@@ -10,7 +9,6 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ClientKafka } from '@nestjs/microservices';
-import { eq } from 'drizzle-orm';
 import * as bcrypt from 'bcrypt';
 import { UsersRepository } from './auth-service.repository';
 
@@ -39,9 +37,9 @@ export class AuthServiceService implements OnModuleInit {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // create user
-    const user = await this.usersRepo.createUser(email, hashedPassword, name)
+    const user = await this.usersRepo.createUser(email, hashedPassword, name);
 
-    if(!user) {
+    if (!user) {
       throw new BadRequestException('Something went wrong');
     }
 
@@ -51,7 +49,11 @@ export class AuthServiceService implements OnModuleInit {
     // Create email verification token
     const verificationToken = Math.random().toString(36).substring(2, 15);
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
-    await this.usersRepo.createVerificationToken(user.id, verificationToken, expiresAt);
+    await this.usersRepo.createVerificationToken(
+      user.id,
+      verificationToken,
+      expiresAt,
+    );
 
     // send user registered event
     this.kafkClient.emit(KAFKA_TOPICS.USER_REGISTERED, {
@@ -63,13 +65,15 @@ export class AuthServiceService implements OnModuleInit {
       expiresAt: expiresAt.toISOString(),
     });
 
-    return { message: 'User registered successfully', userId: user.id, verificationToken };
+    return {
+      message: 'User registered successfully',
+      userId: user.id,
+      verificationToken,
+    };
   }
 
   async verifyEmail(verificationToken: string, userId: string) {
     const user = await this.usersRepo.getMe(userId);
-    console.log('User for email verification:', user);
-    console.log("userId:", userId);
     if (!user) {
       throw new BadRequestException('User not found');
     }
@@ -78,7 +82,10 @@ export class AuthServiceService implements OnModuleInit {
       throw new BadRequestException('Email already verified');
     }
 
-    const tokenRecord = await this.usersRepo.getVerificationToken(userId, verificationToken);
+    const tokenRecord = await this.usersRepo.getVerificationToken(
+      userId,
+      verificationToken,
+    );
 
     if (!tokenRecord) {
       throw new BadRequestException('Invalid or expired verification token');
@@ -94,7 +101,7 @@ export class AuthServiceService implements OnModuleInit {
     // Delete the used verification token
     await this.usersRepo.deleteVerificationToken(userId, verificationToken);
 
-    return await this.usersRepo.getMe(userId);  
+    return await this.usersRepo.getMe(userId);
   }
 
   async getMe(userId: string) {
@@ -102,25 +109,30 @@ export class AuthServiceService implements OnModuleInit {
 
     // Get token verify email
     const tokenRecord = await this.usersRepo.getVerificationToken(userId, '');
-   
-      if (!user) {    
-        throw new BadRequestException('User not found');
-      }
-      return {
-        ...user,
-        tokenRecord
-      };
-  }
 
+    if (!user) {
+      throw new BadRequestException('User not found');
+    }
+    return {
+      ...user,
+      tokenRecord,
+    };
+  }
 
   async login(email: string, password: string) {
     const exitingUser = await this.usersRepo.exitingUser(email);
 
-    if (!exitingUser || !(await bcrypt.compare(password, exitingUser.passwordHash))) {
+    if (
+      !exitingUser ||
+      !(await bcrypt.compare(password, exitingUser.passwordHash))
+    ) {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const token = this.jwtService.sign({ sub: exitingUser.id, email: exitingUser.email });
+    const token = this.jwtService.sign({
+      sub: exitingUser.id,
+      email: exitingUser.email,
+    });
 
     this.kafkClient.emit(KAFKA_TOPICS.USER_LOGIN, {
       userId: exitingUser.id,

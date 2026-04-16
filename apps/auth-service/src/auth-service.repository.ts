@@ -1,13 +1,16 @@
 // src/users/users.repository.ts
 import { Injectable } from '@nestjs/common';
 import { eq, and } from 'drizzle-orm';
-import { DatabaseService, emailVerificationTokens, userProfiles, users } from '@app/database';
+import {
+  DatabaseService,
+  emailVerificationTokens,
+  userProfiles,
+  users,
+} from '@app/database';
 
 @Injectable()
 export class UsersRepository {
-  constructor(
-    private readonly dbService: DatabaseService,
-  ) { }
+  constructor(private readonly dbService: DatabaseService) {}
 
   async exitingUser(email: string) {
     const [user] = await this.dbService.db
@@ -25,7 +28,7 @@ export class UsersRepository {
       .values({ email, passwordHash: hashedPassword, name })
       .returning();
 
-    return user
+    return user;
   }
 
   async createProfile(userId: string) {
@@ -46,7 +49,11 @@ export class UsersRepository {
     return user;
   }
 
-  async createVerificationToken(userId: string, token: string, expiresAt: Date) {
+  async createVerificationToken(
+    userId: string,
+    token: string,
+    expiresAt: Date,
+  ) {
     return await this.dbService.db
       .insert(emailVerificationTokens)
       .values({ userId, token, expiresAt })
@@ -57,7 +64,12 @@ export class UsersRepository {
     const [verificationToken] = await this.dbService.db
       .select()
       .from(emailVerificationTokens)
-      .where(and(eq(emailVerificationTokens.userId, userId), eq(emailVerificationTokens.token, token)))
+      .where(
+        and(
+          eq(emailVerificationTokens.userId, userId),
+          eq(emailVerificationTokens.token, token),
+        ),
+      )
       .limit(1);
 
     return verificationToken;
@@ -66,7 +78,12 @@ export class UsersRepository {
   async deleteVerificationToken(userId: string, token: string) {
     await this.dbService.db
       .delete(emailVerificationTokens)
-      .where(and(eq(emailVerificationTokens.userId, userId), eq(emailVerificationTokens.token, token)));
+      .where(
+        and(
+          eq(emailVerificationTokens.userId, userId),
+          eq(emailVerificationTokens.token, token),
+        ),
+      );
   }
 
   async verifyEmail(userId: string) {

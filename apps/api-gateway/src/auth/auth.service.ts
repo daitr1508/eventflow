@@ -32,22 +32,19 @@ export class AuthService {
 
   async verifyEmail(token: string, verificationToken: string) {
     try {
-        const response = await firstValueFrom(
+      const response = await firstValueFrom(
         this.httpService.post(
           `${this.authServiceUrl}/verify-email`,
           {},
-        {
-          headers: { 
-            // Nếu có AuthGuard('jwt'), bạn cần thêm cả JWT của user ở đây nữa
-            'Authorization': token,
-            'x-token-verify-email': verificationToken,
+          {
+            headers: {
+              Authorization: token,
+              'x-token-verify-email': verificationToken,
+            },
           },
-        },
         ),
       );
-      console.log('Email verification response:', response.data);
-
-      return response.data;
+      return response.data as { message: string };
     } catch (error) {
       this.handleError(error);
     }
@@ -74,12 +71,9 @@ export class AuthService {
   async getMe(token: string): Promise<UserProfileResponse> {
     try {
       const response = await firstValueFrom(
-        this.httpService.get<UserProfileResponse>(
-          `${this.authServiceUrl}/me`,
-          {
-            headers: { Authorization: token },
-          },
-        ),
+        this.httpService.get<UserProfileResponse>(`${this.authServiceUrl}/me`, {
+          headers: { Authorization: token },
+        }),
       );
 
       return response.data;
