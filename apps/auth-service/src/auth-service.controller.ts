@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -44,5 +45,26 @@ export class AuthServiceController {
   @Post('login')
   login(@Body() dto: LoginDto) {
     return this.authServiceService.login(dto.email, dto.password);
+  }
+
+  @UseGuards(AuthGuard('jwt'))
+  @Post('refresh-token')
+  refreshToken(
+    @Request() req: { user: { userId: string } },
+    @Body('refreshToken') refreshToken: string,
+  ) {
+    return this.authServiceService.refreshToken(req.user.userId, refreshToken);
+  }
+
+  @UseGuards(AuthGuard('jwt'))
+  @Post('logout')
+  logout(
+    @Request() req: { user: { userId: string } },
+    @Body('refreshToken') refreshToken: string,
+  ) {
+    if (!refreshToken) {
+      throw new BadRequestException('Refresh token is required for logout');
+    }
+    return this.authServiceService.logout(req.user.userId, refreshToken);
   }
 }

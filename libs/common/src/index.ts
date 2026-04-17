@@ -18,3 +18,6 @@ export * from './filters';
 
 // Interceptors
 export * from './interceptors';
+
+// Config
+export * from './config';

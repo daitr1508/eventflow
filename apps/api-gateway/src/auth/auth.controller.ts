@@ -24,8 +24,24 @@ export class AuthController {
   }
 
   //POST /auth/refresh: Sử dụng Refresh Token để cấp mới Access Token khi token cũ hết hạn (Kiểm tra trong bảng refresh_tokens).
+  @Post('refresh')
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  refreshToken(
+    @Headers('authorization') authorization: string,
+    @Body('refreshToken') refreshToken: string,
+  ) {
+    return this.authService.refreshToken(authorization, refreshToken);
+  }
 
   //POST /auth/logout: Đăng xuất. Xóa Refresh Token trong Database (Update is_revoked = true) và xóa Cookie phía Client.
+  @Post('logout')
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  logout(
+    @Headers('authorization') authorization: string,
+    @Body('refreshToken') refreshToken: string,
+  ) {
+    return this.authService.logout(authorization, refreshToken);
+  }
 
   //POST /auth/forgot-password: Yêu cầu khôi phục mật khẩu (Gửi email chứa link/OTP).
 

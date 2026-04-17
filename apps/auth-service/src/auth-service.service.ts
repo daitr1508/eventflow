@@ -11,52 +11,66 @@ import { JwtService } from '@nestjs/jwt';
 import { ClientKafka } from '@nestjs/microservices';
 import * as bcrypt from 'bcrypt';
 import { UsersRepository } from './auth-service.repository';
+import { ConfigService } from '@nestjs/config';
+
+const SALT_ROUNDS = 10;
+const TOKEN_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000;
 
 @Injectable()
 export class AuthServiceService implements OnModuleInit {
   constructor(
-    @Inject(KAFKA_SERVICE) private readonly kafkClient: ClientKafka,
+    @Inject(KAFKA_SERVICE) private readonly kafkaClient: ClientKafka,
     private readonly usersRepo: UsersRepository,
     private readonly jwtService: JwtService,
+    private readonly configService: ConfigService,
   ) {}
 
   async onModuleInit() {
-    // connect to kafka when module initializes
-    await this.kafkClient.connect();
+    await this.kafkaClient.connect();
+  }
+
+  private generateToken(userId: string, email: string) {
+    const payload = { sub: userId, email };
+
+    const accessToken = this.jwtService.sign(payload, {
+      expiresIn: this.configService.get('auth.jwtExpiresIn'),
+    });
+
+    const refreshToken = this.jwtService.sign(payload, {
+      expiresIn: this.configService.get('auth.jwtExpiresInRefreshToken'),
+    });
+
+    return { accessToken, refreshToken };
+  }
+
+  private getTokenExpiry(): Date {
+    return new Date(Date.now() + TOKEN_EXPIRY_MS);
   }
 
   async register(email: string, password: string, name: string) {
-    // check if user exists
-    const exitingUser = await this.usersRepo.exitingUser(email);
-
-    if (exitingUser) {
+    if (await this.usersRepo.exitingUser(email)) {
       throw new ConflictException('User already exists');
     }
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    // create user
+    const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
     const user = await this.usersRepo.createUser(email, hashedPassword, name);
 
     if (!user) {
-      throw new BadRequestException('Something went wrong');
+      throw new BadRequestException('Failed to create user');
     }
 
-    // Create profile
     await this.usersRepo.createProfile(user.id);
 
-    // Create email verification token
     const verificationToken = Math.random().toString(36).substring(2, 15);
-    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    const expiresAt = this.getTokenExpiry();
+
     await this.usersRepo.createVerificationToken(
       user.id,
       verificationToken,
       expiresAt,
     );
 
-    // send user registered event
-    this.kafkClient.emit(KAFKA_TOPICS.USER_REGISTERED, {
+    this.kafkaClient.emit(KAFKA_TOPICS.USER_REGISTERED, {
       userId: user.id,
       email: user.email,
       name: user.name,
@@ -87,88 +101,114 @@ export class AuthServiceService implements OnModuleInit {
       verificationToken,
     );
 
-    if (!tokenRecord) {
+    if (!tokenRecord || tokenRecord.expiresAt < new Date()) {
       throw new BadRequestException('Invalid or expired verification token');
     }
 
-    if (tokenRecord.expiresAt < new Date()) {
-      throw new BadRequestException('Verification token has expired');
-    }
-
-    // Mark email as verified (this should ideally be done in a transaction)
     await this.usersRepo.verifyEmail(userId);
-
-    // Delete the used verification token
     await this.usersRepo.deleteVerificationToken(userId, verificationToken);
 
+    const { accessToken, refreshToken } = this.generateToken(
+      userId,
+      user.users.email,
+    );
+
+    await this.usersRepo.createRefreshToken({
+      userId,
+      token: refreshToken,
+      expiresAt: this.getTokenExpiry(),
+    });
+
     return {
+      accessToken,
+      refreshToken,
       message: 'Email verified successfully',
-      status: 'success',
     };
   }
 
   async getMe(userId: string) {
     const user = await this.usersRepo.getMe(userId);
-
-    // Get token verify email
-    const tokenRecord = await this.usersRepo.getVerificationToken(userId, '');
-
     if (!user) {
       throw new BadRequestException('User not found');
     }
-    return {
-      ...user,
-      tokenRecord,
-    };
+
+    const tokenRecord = await this.usersRepo.getVerificationToken(userId, '');
+
+    return { ...user, tokenRecord };
   }
 
   async login(email: string, password: string) {
-    const exitingUser = await this.usersRepo.exitingUser(email);
+    const user = await this.usersRepo.exitingUser(email);
 
-    if (
-      !exitingUser ||
-      !(await bcrypt.compare(password, exitingUser.passwordHash))
-    ) {
+    if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const token = this.jwtService.sign({
-      sub: exitingUser.id,
-      email: exitingUser.email,
+    const { accessToken, refreshToken } = this.generateToken(
+      user.id,
+      user.email,
+    );
+
+    await this.usersRepo.createRefreshToken({
+      userId: user.id,
+      token: refreshToken,
+      expiresAt: this.getTokenExpiry(),
     });
 
-    this.kafkClient.emit(KAFKA_TOPICS.USER_LOGIN, {
-      userId: exitingUser.id,
+    this.kafkaClient.emit(KAFKA_TOPICS.USER_LOGIN, {
+      userId: user.id,
       timestamp: new Date().toISOString(),
     });
 
     return {
-      access_token: token,
+      access_token: accessToken,
+      refresh_token: refreshToken,
       user: {
-        id: exitingUser.id,
-        email: exitingUser.email,
-        name: exitingUser.name,
-        role: exitingUser.role,
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
       },
     };
   }
 
-  // async getProfile(userId: string) {
-  //   const [user] = await this.dbService.db
-  //     .select({
-  //       id: users.id,
-  //       email: users.email,
-  //       name: users.name,
-  //       role: users.role,
-  //     })
-  //     .from(users)
-  //     .where(eq(users.id, userId))
-  //     .limit(1);
+  async refreshToken(userId: string, refreshToken: string) {
+    const tokenRecord = await this.usersRepo.getRefreshToken(
+      userId,
+      refreshToken,
+    );
 
-  //   if (!user) {
-  //     throw new UnauthorizedException('User not found');
-  //   }
+    if (
+      !tokenRecord ||
+      tokenRecord.isRevoked ||
+      tokenRecord.expiresAt < new Date()
+    ) {
+      throw new UnauthorizedException('Invalid or expired refresh token');
+    }
 
-  //   return user;
-  // }
+    const user = await this.usersRepo.getUserByUserId(userId);
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    const { accessToken: newAccessToken, refreshToken: newRefreshToken } =
+      this.generateToken(userId, user.email);
+
+    await this.usersRepo.revokeRefreshToken(userId, refreshToken);
+    await this.usersRepo.createRefreshToken({
+      userId,
+      token: newRefreshToken,
+      expiresAt: this.getTokenExpiry(),
+    });
+
+    return {
+      access_token: newAccessToken,
+      refresh_token: newRefreshToken,
+    };
+  }
+
+  async logout(userId: string, refreshToken: string) {
+    await this.usersRepo.revokeRefreshToken(userId, refreshToken);
+    return { message: 'Logged out successfully' };
+  }
 }

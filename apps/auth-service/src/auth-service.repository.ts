@@ -4,6 +4,7 @@ import { eq, and } from 'drizzle-orm';
 import {
   DatabaseService,
   emailVerificationTokens,
+  refreshTokens,
   userProfiles,
   users,
 } from '@app/database';
@@ -43,6 +44,16 @@ export class UsersRepository {
       .select()
       .from(users)
       .leftJoin(userProfiles, eq(users.id, userProfiles.userId))
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    return user;
+  }
+
+  async getUserByUserId(userId: string) {
+    const [user] = await this.dbService.db
+      .select()
+      .from(users)
       .where(eq(users.id, userId))
       .limit(1);
 
@@ -91,5 +102,51 @@ export class UsersRepository {
       .update(users)
       .set({ isEmailVerified: true })
       .where(eq(users.id, userId));
+  }
+
+  async createRefreshToken({
+    userId,
+    token,
+    // deviceId,
+    // ipAddress,
+    // userAgent,
+    expiresAt,
+  }: {
+    userId: string;
+    token: string;
+    // deviceId: string | null;
+    // ipAddress: string | null;
+    // userAgent: string | null;
+    expiresAt: Date;
+  }) {
+    return await this.dbService.db
+      .insert(refreshTokens)
+      .values({
+        userId,
+        token,
+        expiresAt,
+      })
+      .returning();
+  }
+
+  async getRefreshToken(userId: string, token: string) {
+    const [refreshToken] = await this.dbService.db
+      .select()
+      .from(refreshTokens)
+      .where(
+        and(eq(refreshTokens.userId, userId), eq(refreshTokens.token, token)),
+      )
+      .limit(1);
+
+    return refreshToken;
+  }
+
+  async revokeRefreshToken(userId: string, token: string) {
+    await this.dbService.db
+      .update(refreshTokens)
+      .set({ isRevoked: true })
+      .where(
+        and(eq(refreshTokens.userId, userId), eq(refreshTokens.token, token)),
+      );
   }
 }

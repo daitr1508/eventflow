@@ -1,15 +1,15 @@
 import { Injectable, HttpException } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
-import { AuthResponse, SERVICES_PORTS, UserProfileResponse } from '@app/common';
+import { AuthResponse, UserProfileResponse } from '@app/common';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class AuthService {
-  private readonly authServiceUrl =
-    process.env.AUTH_SERVICE_URL ||
-    `http://localhost:${SERVICES_PORTS.AUTH_SERVICE}`;
-
-  constructor(private readonly httpService: HttpService) {}
+  constructor(
+    private readonly httpService: HttpService,
+    private readonly configService: ConfigService,
+  ) {}
 
   async register(data: {
     email: string;
@@ -19,7 +19,7 @@ export class AuthService {
     try {
       const response = await firstValueFrom(
         this.httpService.post<UserProfileResponse>(
-          `${this.authServiceUrl}/register`,
+          `${this.configService.get('auth.authServiceUrl')}/register`,
           data,
         ),
       );
@@ -34,7 +34,7 @@ export class AuthService {
     try {
       const response = await firstValueFrom(
         this.httpService.post(
-          `${this.authServiceUrl}/verify-email`,
+          `${this.configService.get('auth.authServiceUrl')}/verify-email`,
           {},
           {
             headers: {
@@ -57,7 +57,7 @@ export class AuthService {
     try {
       const response = await firstValueFrom(
         this.httpService.post<AuthResponse>(
-          `${this.authServiceUrl}/login`,
+          `${this.configService.get('auth.authServiceUrl')}/login`,
           data,
         ),
       );
@@ -68,12 +68,58 @@ export class AuthService {
     }
   }
 
+  async refreshToken(
+    token: string,
+    refreshToken: string,
+  ): Promise<AuthResponse> {
+    try {
+      const response = await firstValueFrom(
+        this.httpService.post<AuthResponse>(
+          `${this.configService.get('auth.authServiceUrl')}/refresh`,
+          { refreshToken },
+          {
+            headers: {
+              Authorization: token,
+            },
+          },
+        ),
+      );
+
+      return response.data;
+    } catch (error) {
+      this.handleError(error);
+    }
+  }
+
+  async logout(token: string, refreshToken: string) {
+    try {
+      const response = await firstValueFrom(
+        this.httpService.post(
+          `${this.configService.get('auth.authServiceUrl')}/logout`,
+          { refreshToken },
+          {
+            headers: {
+              Authorization: token,
+            },
+          },
+        ),
+      );
+
+      return response.data as { message: string };
+    } catch (error) {
+      this.handleError(error);
+    }
+  }
+
   async getMe(token: string): Promise<UserProfileResponse> {
     try {
       const response = await firstValueFrom(
-        this.httpService.get<UserProfileResponse>(`${this.authServiceUrl}/me`, {
-          headers: { Authorization: token },
-        }),
+        this.httpService.get<UserProfileResponse>(
+          `${this.configService.get('auth.authServiceUrl')}/me`,
+          {
+            headers: { Authorization: token },
+          },
+        ),
       );
 
       return response.data;
