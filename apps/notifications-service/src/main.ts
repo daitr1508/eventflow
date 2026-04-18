@@ -7,6 +7,12 @@ import { SERVICES_PORTS } from '@app/common';
 async function bootstrap() {
   const app = await NestFactory.create(NotificationsServiceModule);
 
+  app.enableCors({
+    origin: '*',
+    credentials: true,
+    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+  });
+
   // connect kafka microservices for consuming events
   app.connectMicroservice<MicroserviceOptions>({
     transport: Transport.KAFKA,
