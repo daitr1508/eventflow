@@ -10,6 +10,8 @@ import { UsersRepository } from './auth-service.repository';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { authConfig } from '@app/common/config/auth.config';
 import { envValidationSchema } from '@app/common';
+import { RedisModule } from './redis/redis.module';
+import { SessionAuthGuard } from './session-auth.guard';
 
 const ENV = process.env.NODE_ENV;
 
@@ -31,8 +33,14 @@ const ENV = process.env.NODE_ENV;
         signOptions: { expiresIn: configService.get('auth.jwtExpiresIn') },
       }),
     }),
+    RedisModule,
   ],
   controllers: [AuthServiceController],
-  providers: [AuthServiceService, JwtStrategy, UsersRepository],
+  providers: [
+    AuthServiceService,
+    JwtStrategy,
+    UsersRepository,
+    SessionAuthGuard,
+  ],
 })
 export class AuthServiceModule {}

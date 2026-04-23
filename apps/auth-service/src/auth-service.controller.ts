@@ -6,11 +6,15 @@ import {
   Headers,
   Post,
   Request,
+  Res,
   UseGuards,
 } from '@nestjs/common';
 import { AuthServiceService } from './auth-service.service';
 import { LoginDto, RegisterDto } from '@app/common';
 import { AuthGuard } from '@nestjs/passport';
+import { Response } from 'express';
+import { SessionAuthGuard } from './session-auth.guard';
+import { SessionUser } from './session-user.decorator';
 
 @Controller()
 export class AuthServiceController {
@@ -36,35 +40,66 @@ export class AuthServiceController {
   }
 
   // Get current user info (protected route)
-  @UseGuards(AuthGuard('jwt'))
+  @UseGuards(SessionAuthGuard)
   @Get('me')
-  me(@Request() req: { user: { userId: string } }) {
-    return this.authServiceService.getMe(req.user.userId);
+  me(@SessionUser() user: { userId: string }) {
+    return this.authServiceService.getMe(user.userId);
   }
 
   @Post('login')
-  login(@Body() dto: LoginDto) {
-    return this.authServiceService.login(dto.email, dto.password);
+  async login(
+    @Body() dto: LoginDto,
+    @Res({ passthrough: true }) response,
+    @Request() req: any,
+  ) {
+    const data = await this.authServiceService.login(dto.email, dto.password);
+
+    req.session.user = {
+      userId: data.user.id,
+      email: data.user.email,
+      name: data.user.name,
+      role: data.user.role,
+    };
+
+    response.cookie('refreshToken', data.refresh_token, {
+      httpOnly: true,
+      secure: false, // Set to true in production with HTTPS
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    });
+
+    return data;
   }
 
-  @UseGuards(AuthGuard('jwt'))
+  @UseGuards(SessionAuthGuard)
   @Post('refresh-token')
   refreshToken(
-    @Request() req: { user: { userId: string } },
+    @SessionUser() user: { userId: string },
     @Body('refreshToken') refreshToken: string,
   ) {
-    return this.authServiceService.refreshToken(req.user.userId, refreshToken);
+    return this.authServiceService.refreshToken(user.userId, refreshToken);
   }
 
-  @UseGuards(AuthGuard('jwt'))
+  @UseGuards(SessionAuthGuard)
   @Post('logout')
-  logout(
-    @Request() req: { user: { userId: string } },
+  async logout(
+    @Request() req: any,
     @Body('refreshToken') refreshToken: string,
   ) {
     if (!refreshToken) {
       throw new BadRequestException('Refresh token is required for logout');
     }
-    return this.authServiceService.logout(req.user.userId, refreshToken);
+
+    const userId = req.session.user.userId;
+    await new Promise<void>((resolve, reject) => {
+      req.session.destroy((err: Error) => {
+        if (err) {
+          return reject(err);
+        }
+        resolve();
+      });
+    });
+
+    return this.authServiceService.logout(userId, refreshToken);
   }
 }

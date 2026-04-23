@@ -137,7 +137,19 @@ export class AuthServiceService implements OnModuleInit {
     return { ...user, tokenRecord };
   }
 
-  async login(email: string, password: string) {
+  async login(
+    email: string,
+    password: string,
+  ): Promise<{
+    access_token: string;
+    refresh_token: string;
+    user: {
+      id: string;
+      email: string;
+      name: string;
+      role: string;
+    };
+  }> {
     const user = await this.usersRepo.exitingUser(email);
 
     if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
