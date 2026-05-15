@@ -7,9 +7,17 @@ import {
   SERVICES_PORTS,
   TransformInterceptor,
 } from '@app/common';
+import { Logger } from 'nestjs-pino';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, {
+    bufferLogs: true,
+  });
+
+  const globalPrefix = 'api/v1';
+  app.setGlobalPrefix(globalPrefix);
+
+  app.useLogger(app.get(Logger));
 
   app.enableCors({
     origin: ['http://localhost:4000'].filter(Boolean),
